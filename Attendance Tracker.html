@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline Attendance Checker</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { max-width: 600px; margin: auto; text-align: center; }
+        input, button { margin: 10px; padding: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f4f4f4; }
+        #autocomplete-list { position: absolute; border: 1px solid #ddd; background: white; max-height: 150px; overflow-y: auto; width: 200px; }
+        .autocomplete-item { padding: 8px; cursor: pointer; }
+        .autocomplete-item:hover { background: #f4f4f4; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Offline Attendance Checker</h2>
+        <input type="file" id="fileInput">
+        <button onclick="toggleStudentList()">Show Student List</button>
+        <div style="position: relative; display: inline-block;">
+            <input type="text" id="searchInput" placeholder="Search Student" onkeyup="showAutocomplete()">
+            <div id="autocomplete-list"></div>
+        </div>
+        <button onclick="searchStudent()">Search</button>
+        <table id="results">
+            <thead>
+                <tr>
+                    <th>Last Name</th>
+                    <th>First Name</th>
+                    <th>ID Number</th>
+                    <th>Year Level</th>
+                    <th>Date & Time</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <div id="studentList" style="margin-top: 20px; display: none;"></div>
+    </div>
+
+    <script>
+        let students = [];
+
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const uniqueStudents = new Map();
+                    e.target.result.split('\n').forEach(line => {
+                        let parts = line.split(',').map(part => part.trim());
+                        let student = {
+                            lastName: parts[0] || "None",
+                            firstName: parts[1] || "None",
+                            idNumber: parts[2] || "None",
+                            yearLevel: parts[3] || "None"
+                        };
+                        let key = student.lastName + student.firstName + student.idNumber;
+                        uniqueStudents.set(key, student);
+                    });
+                    students = Array.from(uniqueStudents.values());
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        function showAutocomplete() {
+            const input = document.getElementById('searchInput').value.toLowerCase();
+            const autocompleteList = document.getElementById('autocomplete-list');
+            autocompleteList.innerHTML = '';
+            if (!input) return;
+            
+            let matches = students.filter(student =>
+                student.lastName.toLowerCase().includes(input) ||
+                student.firstName.toLowerCase().includes(input)
+            );
+            
+            matches.forEach(student => {
+                let item = document.createElement('div');
+                item.classList.add('autocomplete-item');
+                item.textContent = student.lastName + ", " + student.firstName;
+                item.onclick = function() {
+                    document.getElementById('searchInput').value = student.lastName + ", " + student.firstName;
+                    searchStudent();
+                    document.getElementById('searchInput').value = ''; // Clear search field after selection
+                    autocompleteList.innerHTML = '';
+                };
+                autocompleteList.appendChild(item);
+            });
+        }
+
+        function searchStudent() {
+            const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+            const resultsBody = document.querySelector('#results tbody');
+            
+            let foundStudents = students.filter(student =>
+                (student.lastName + ", " + student.firstName).toLowerCase() === searchQuery
+            );
+            
+            let currentDateTime = new Date().toLocaleString();
+            
+            foundStudents.forEach(student => {
+                const row = `<tr>
+                    <td>${student.lastName}</td>
+                    <td>${student.firstName}</td>
+                    <td>${student.idNumber}</td>
+                    <td>${student.yearLevel}</td>
+                    <td>${currentDateTime}</td>
+                </tr>`;
+                resultsBody.innerHTML += row;
+            });
+        }
+
+        function toggleStudentList() {
+            const studentListDiv = document.getElementById('studentList');
+            if (studentListDiv.style.display === 'none' || studentListDiv.style.display === '') {
+                studentListDiv.innerHTML = '<h3>Student List</h3>' + students.map(s => `<p>${s.lastName}, ${s.firstName} - ${s.idNumber} (${s.yearLevel})</p>`).join('');
+                studentListDiv.style.display = 'block';
+            } else {
+                studentListDiv.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
